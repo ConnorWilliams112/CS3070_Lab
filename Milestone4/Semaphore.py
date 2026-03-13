@@ -27,10 +27,11 @@ class Semaphore(object):
         # such as queues, locks, and waking sleeping processes.
         self.OS = simKernel
 
-        # Semaphore counter. This represents how many processes
-        # are allowed to enter the critical section. In our lab the
-        # semaphore is initialized to 1.
-        self.count = n
+        # Initialize the counter to the provided value n
+        self.counter = "atm_counter" 
+
+        # Write the initial counter value to the OS so it can be accessed by wait() and signal() methods.
+        self.OS.write(self.counter, n)
 
         # Queue used to store the names of processes that must wait
         # because the semaphore counter became negative.
@@ -56,12 +57,18 @@ class Semaphore(object):
         # Acquire the atomic lock to safely update the counter.
         self.lock.acquire(caller)
 
+        # Read the current counter value
+        count = self.OS.read(self.counter)  
+
         # Decrement the semaphore counter
-        self.count -= 1
+        count -= 1 
+
+        # Write the updated counter value back to the OS
+        self.OS.write(self.counter, count) 
 
         # If the counter becomes negative, this means the critical
         # section is already occupied and the calling process must wait.
-        if self.count < 0:
+        if count < 0:
 
             # Place the process name in the semaphore waiting queue.
             # This simulates the OS placing the process in a wait list.
@@ -91,20 +98,28 @@ class Semaphore(object):
         
         # Acquire the atomic lock to safely update the counter.
         self.lock.acquire(caller)
+        
+        # Read the current counter value
+        count = self.OS.read(self.counter)  
 
-        # Increment the semaphore counter to indicate that the
-        # critical section has been released.
-        self.count += 1
+        # Increment the counter
+        count += 1  
+        
+        # Write the updated counter value back to the OS
+        self.OS.write(self.counter, count)  
 
         # If the counter is <= 0, there are processes waiting
         # in the semaphore queue.
-        if self.count <= 0:
+        if count <= 0:
 
             # Remove one waiting process from the queue.
             process_name = self.queue.get()
 
             # Wake that process so it can continue execution.
             self.OS.wake(process_name)
+
+            # Yield to allow the woken process to run immediately
+            caller.slp_yield()  
 
         # Release the lock so other processes can access the semaphore.
         self.lock.release(caller)
