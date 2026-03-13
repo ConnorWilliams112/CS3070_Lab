@@ -2,11 +2,12 @@
 # Semaphore.py
 # CS3070 
 #
+# Authors: Montes - Papakostas - Sami - Williams
 # created: Spring '16
-# updated: 13 Jan 2022
+# updated: 13 Mar 2026
 #
 
-'''Replace Me with your milestone4 Semaphore.py file.'''
+'''This is the Semaphore implementaion class.'''
 class Semaphore(object):
 
 
@@ -15,10 +16,31 @@ class Semaphore(object):
 
 
     def __init__(self, n, simKernel):
+        ''' use as provided.
+            - n is the number to set the Semaphore counter to initially
+            - simKernel provides the access to the simulated kernel a real OS
+                 would have when constructing a Semaphore
+            This constructor will run once when the OS invokes it.
+        '''
+        
+        # Reference to the simulated OS kernel so we can use its services
+        # such as queues, locks, and waking sleeping processes.
         self.OS = simKernel
 
+        # Initialize the counter to the provided value n
+        self.counter = "atm_counter" 
 
+        # Write the initial counter value to the OS so it can be accessed by wait() and signal() methods.
+        self.OS.write(self.counter, n)
 
+        # Queue used to store the names of processes that must wait
+        # because the semaphore counter became negative.
+        self.queue = self.OS.getQueue()
+
+        # Atomic lock used to guarantee that updates to the semaphore
+        # counter and queue happen atomically (preventing race conditions
+        # between concurrent wait() and signal() calls).
+        self.lock = self.OS.getAtomicLock()
 
 
 ##########################################
@@ -27,13 +49,81 @@ class Semaphore(object):
 
 
     def wait(self, caller):
-        pass
+        ''' semaphore wait functionality.
+            - caller is the process asking "wait?"
+              (you will need caller because this is a simulated system,
+               a production OS has this info available as part of the PCB)'''
+        
+        # Acquire the atomic lock to safely update the counter.
+        self.lock.acquire(caller)
+
+        # Read the current counter value
+        count = self.OS.read(self.counter)  
+
+        # Decrement the semaphore counter
+        count -= 1 
+
+        # Write the updated counter value back to the OS
+        self.OS.write(self.counter, count) 
+
+        # If the counter becomes negative, this means the critical
+        # section is already occupied and the calling process must wait.
+        if count < 0:
+
+            # Place the process name in the semaphore waiting queue.
+            # This simulates the OS placing the process in a wait list.
+            self.queue.put(caller.getName())
+
+            # Release the lock before blocking so other processes
+            # can access the semaphore.
+            self.lock.release(caller)
+
+            # Put the calling process to sleep until another process
+            # performs a signal() and wakes it.
+            caller.sleep()
+        else:
+
+            # If the counter is still >= 0, the process can continue
+            # into the critical section, so we release the lock.
+            self.lock.release(caller)
 
 
 
 
     def signal(self, caller):
-        pass
+        ''' semaphore signal functionality.
+            - caller is the process providing the "signal"
+              (you will need caller because this is a simulated system,
+               a production OS has this info available as part of the PCB)'''
+        
+        # Acquire the atomic lock to safely update the counter.
+        self.lock.acquire(caller)
+        
+        # Read the current counter value
+        count = self.OS.read(self.counter)  
+
+        # Increment the counter
+        count += 1  
+        
+        # Write the updated counter value back to the OS
+        self.OS.write(self.counter, count)  
+
+        # If the counter is <= 0, there are processes waiting
+        # in the semaphore queue.
+        if count <= 0:
+
+            # Remove one waiting process from the queue.
+            process_name = self.queue.get()
+
+            # Wake that process so it can continue execution.
+            self.OS.wake(process_name)
+
+            # Yield to allow the woken process to run immediately
+            caller.slp_yield()  
+
+        # Release the lock so other processes can access the semaphore.
+        self.lock.release(caller)
+
 
 
 

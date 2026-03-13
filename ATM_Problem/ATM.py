@@ -68,6 +68,7 @@ class ATM(mp.Process):
                 else:            #deposit
                     pass
 
+                ##### TODO: fix this!!!!!!!!!!!
                 self.atm_connection.send( ATMMessage.wrap(GET_BALANCE, 0) )
                 balance = self.__recieveBalance__()
                 
@@ -79,6 +80,8 @@ class ATM(mp.Process):
 
                 print ( self.clientName + ' transaction for: ' + str(transactionAmount) + ', balance of: ' + str(balance) + '\n', end = ''  )
                 self.transactionTotal += transactionAmount
+
+                ##### end of TODO
 
 
         print('   ATM machine', self.clientName, 'shutting down; transaction total was:', self.transactionTotal )
