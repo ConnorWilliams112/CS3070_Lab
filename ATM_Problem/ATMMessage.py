@@ -2,13 +2,12 @@
 # ATMMessage.py
 # CS3070 
 #
+# Authors: Montes - Papakostas - Sami - Williams
 # created: Spring '16
-# updated: 13 Jan 2022
-#
+# updated: 16 Mar 2022
 
 
-GET_BALANCE = 'getBalance'
-PUT_BALANCE = 'putBalance'
+TRANSACTION = 'transaction'
 BALANCE = 'balance'
 SHUTDOWN = 'shutdown'
 

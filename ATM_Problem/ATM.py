@@ -2,9 +2,10 @@
 # ATM.py
 # CS3070 Synchronization Lab series 
 #
+# Authors: Montes - Papakostas - Sami - Williams
 # created: Spring '16
-# updated: 13 Jan 2022
-#
+# updated: 16 Mar 2022
+
 
 
 import random
@@ -54,9 +55,17 @@ class ATM(mp.Process):
             #select deposit or withdrawal amount
             transactionAmount = int( random.random() * 300)
 
+            # Protocol (delta legend):
+            #  - transactionAmount > 0 : deposit
+            #  - transactionAmount < 0 : withdrawal
+            #  - transactionAmount == 0: balance inquiry
+            # Client sends one `TRANSACTION` message carrying this delta.
+            # The server applies the delta inside a semaphore-protected
+            # critical section and replies once with `BALANCE`.
+
             pull = random.random()
             if pull < 0.2:     #check balance
-                self.atm_connection.send( ATMMessage.wrap(GET_BALANCE, 0) )
+                self.atm_connection.send( ATMMessage.wrap(TRANSACTION, 0) )
                 balance = self.__recieveBalance__()
                 if balance == SHUTDOWN:
                     break
@@ -67,21 +76,15 @@ class ATM(mp.Process):
                     transactionAmount = -transactionAmount
                 else:            #deposit
                     pass
-
-                ##### TODO: fix this!!!!!!!!!!!
-                self.atm_connection.send( ATMMessage.wrap(GET_BALANCE, 0) )
+                # send a single transaction request (delta) and receive the new balance
+                self.atm_connection.send( ATMMessage.wrap(TRANSACTION, transactionAmount) )
                 balance = self.__recieveBalance__()
-                
+
                 if balance == SHUTDOWN:
                     break
 
-                balance += transactionAmount
-                self.atm_connection.send( ATMMessage.wrap(PUT_BALANCE, balance) )
-
                 print ( self.clientName + ' transaction for: ' + str(transactionAmount) + ', balance of: ' + str(balance) + '\n', end = ''  )
                 self.transactionTotal += transactionAmount
-
-                ##### end of TODO
 
 
         print('   ATM machine', self.clientName, 'shutting down; transaction total was:', self.transactionTotal )

@@ -2,9 +2,9 @@
 # ATMServer.py
 # CS3070 Synchronization Lab series 
 #
+# Authors: Montes - Papakostas - Sami - Williams
 # created: Spring '16
-# updated: 13 Jan 2022
-#
+# updated: 16 Mar 2022
 
 
 import random
@@ -69,16 +69,28 @@ class ATMServer(mp.Process):
 
             i += 1
             
-            #waiting for next message
+            # waiting for next message
             message = self.atm_connection.recv()
             (operation, amount) = ATMMessage.unwrap(message)
 
-            if operation == PUT_BALANCE:
-                self.putBalance(amount)
-                
-            elif operation == GET_BALANCE:
-                amount = self.getBalance()
-                msg = ATMMessage.wrap(BALANCE, amount)
+            if operation == TRANSACTION:
+                # perform read-modify-write as an atomic critical section
+                self.semaphore.wait(self)
+                try:
+                    currentBalance = self.OS.read(self.account)
+                    # amount == 0 means inquiry. otherwise amount is a delta to apply to the balance 
+                    # positive for deposit, negative for withdrawal
+                    if amount != 0:
+                        newBalance = currentBalance + amount
+                        # prevent negative balances
+                        if newBalance >= 0:
+                            currentBalance = newBalance
+                            self.OS.write(self.account, newBalance)
+                finally:
+                    self.semaphore.signal(self)
+
+                # reply with current/updated balance
+                msg = ATMMessage.wrap(BALANCE, currentBalance)
                 self.atm_connection.send(msg)
                 
             else:
@@ -87,14 +99,6 @@ class ATMServer(mp.Process):
         self.atm_connection.send(SHUTDOWN)   #tell ATM to shutdown
         print('   ATMServer', self.clientName, 'shut down')
         self.OS.completeShutDown()
-
-
-    def getBalance(self):
-        return self.OS.read(self.account)
-
-
-    def putBalance(self, newBalance):
-        self.OS.write(self.account, newBalance)
 
 
     def __initializeSimComponents(self, q, al):
