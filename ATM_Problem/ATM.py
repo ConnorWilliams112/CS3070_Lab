@@ -65,31 +65,31 @@ class ATM(mp.Process):
 
             pull = random.random()
             if pull < 0.2:     #check balance
-                self.atm_connection.send( ATMMessage.wrap(TRANSACTION, 0) )
-                balance = self.__recieveBalance__()
-                if balance == SHUTDOWN:
-                    break
-                print ( self.clientName + ' balance inquiry: ' + str(balance) + '\n', end = ''  )
+                transactionAmount = 0
 
             else:
                 if pull < 0.6:   #withdrawal
                     transactionAmount = -transactionAmount
                 else:            #deposit
                     pass
-                # send a single transaction request (delta) and receive the new balance
-                self.atm_connection.send( ATMMessage.wrap(TRANSACTION, transactionAmount) )
-                balance = self.__recieveBalance__()
 
-                if balance == SHUTDOWN:
-                    break
+            # send a single transaction request (delta) and receive the new balance
+            self.atm_connection.send( ATMMessage.wrap(TRANSACTION, transactionAmount) )
+            balance = self.__recieveBalance__()
 
+            self.transactionTotal += transactionAmount
+
+            if balance == SHUTDOWN :
+                break
+
+            if transactionAmount != 0:
                 print ( self.clientName + ' transaction for: ' + str(transactionAmount) + ', balance of: ' + str(balance) + '\n', end = ''  )
-                self.transactionTotal += transactionAmount
-
+            else:
+                print ( self.clientName + ' balance inquiry: ' + str(balance) + '\n', end = ''  )
 
         print('   ATM machine', self.clientName, 'shutting down; transaction total was:', self.transactionTotal )
         
-
+        
  
     def __recieveBalance__(self):
         '''returns EXIT to indicate a shutdown was recieved, returns the balance otherwise'''
